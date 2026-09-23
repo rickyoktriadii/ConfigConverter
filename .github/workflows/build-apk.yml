@@ -19,8 +19,6 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: ''
 
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
@@ -30,23 +28,15 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Extract project
-        run: |
-          unzip -q ConfigConverter-GitHub-Actions.zip
-          ls -la
-          ls -la ConfigConverter
-
       - name: Run tests
-        working-directory: ConfigConverter
         run: gradle test
 
       - name: Build APK
-        working-directory: ConfigConverter
         run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ConfigConverter-debug
-          path: ConfigConverter/app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

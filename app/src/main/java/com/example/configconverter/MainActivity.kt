@@ -174,7 +174,7 @@ private fun SettingsScreen(vm: ConverterViewModel, modifier: Modifier) {
     }
 }
 
-private object LocalClipboard {
+    object LocalClipboard {
     private var context: Context? = null
     fun init(c: Context) { context = c }
     fun getText(): String {

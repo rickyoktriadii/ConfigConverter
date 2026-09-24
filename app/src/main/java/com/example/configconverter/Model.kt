@@ -1,5 +1,6 @@
 package com.example.configconverter
 
+import java.util.UUID
 import kotlinx.serialization.Serializable
 
 @Serializable

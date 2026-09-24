@@ -1,6 +1,6 @@
 package com.example.configconverter
 
-import android.util.Base64
+import java.util.Base64
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets

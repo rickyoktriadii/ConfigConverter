@@ -49,10 +49,16 @@ class ConverterViewModel(app: Application) : AndroidViewModel(app) {
                     V2RayGenerator.generate(parsed.config),
                     OpenClashGenerator.generate(parsed.config)
                 )
-                _history.value = listOf(
-                    HistoryItem(name=result.config.name, protocol=result.config.protocol, server=result.config.server, port=result.config.port),
-                    *_history.value
-                ).take(100)
+                _history.value = (
+    listOf(
+        HistoryItem(
+            name = result.config.name,
+            protocol = result.config.protocol,
+            server = result.config.server,
+            port = result.config.port
+        )
+    ) + _history.value
+).take(100)
                 _state.value = ConverterState(
                     detected = result.config.protocol.replaceFirstChar { it.uppercase() },
                     result = result,

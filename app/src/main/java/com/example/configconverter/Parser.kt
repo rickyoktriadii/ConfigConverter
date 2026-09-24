@@ -27,7 +27,7 @@ object ConfigParser {
         return try {
             val normalized = s.trim().replace("\n", "").replace("\r", "")
             val padded = normalized + "=".repeat((4 - normalized.length % 4) % 4)
-            String(Base64.decode(padded, Base64.DEFAULT), StandardCharsets.UTF_8)
+            String(Base64.getDecoder().decode(padded), StandardCharsets.UTF_8)
         } catch (_: Exception) { null }
     }
 

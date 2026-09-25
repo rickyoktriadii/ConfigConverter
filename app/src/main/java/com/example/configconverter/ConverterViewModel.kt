@@ -29,10 +29,21 @@ class ConverterViewModel(app: Application) : AndroidViewModel(app) {
         val s = raw.trim()
 
         val d = when {
-            s.startsWith("vmess://", true) -> "VMess"
-            s.startsWith("vless://", true) -> "VLESS"
-            s.startsWith("trojan://", true) -> "Trojan"
-            else -> null
+    s.startsWith("vmess://", true) -> "VMess"
+    s.startsWith("vless://", true) -> "VLESS"
+    s.startsWith("trojan://", true) -> "Trojan"
+    s.startsWith("ss://", true) -> "Shadowsocks"
+    s.startsWith("socks://", true) ||
+    s.startsWith("socks5://", true) -> "SOCKS"
+    s.startsWith("http://", true) ||
+    s.startsWith("https://", true) -> "HTTP"
+    s.startsWith("wireguard://", true) -> "WireGuard"
+    s.startsWith("hysteria2://", true) ||
+    s.startsWith("hy2://", true) ||
+    s.startsWith("hysteria://", true) -> "Hysteria"
+    s.startsWith("{") && s.contains("\"outbounds\"") -> "Xray"
+    else -> null
+        }
         }
 
         _state.value = _state.value.copy(

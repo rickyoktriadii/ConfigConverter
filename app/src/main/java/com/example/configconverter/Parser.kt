@@ -19,30 +19,39 @@ object ConfigParser {
             ?.trim() ?: return ParseResult.Error("Empty configuration")
 
         return when {
-            s.startsWith("{") && s.contains("\"outbounds\"") ->
-                xray(s)
-            s.startsWith("vmess://", true) ->
-                vmess(s)
-            s.startsWith("vless://", true) ->
-                uri(s, "vless")
-            s.startsWith("trojan://", true) ->
-                uri(s, "trojan")
-            s.startsWith("ss://", true) ->
-                ss(s)
-            s.startsWith("socks://", true) ||
-            s.startsWith("socks5://", true) ->
-                socks(s)
-            s.startsWith("http://", true) ||
-            s.startsWith("https://", true) ->
-                http(s)
-            s.startsWith("wireguard://", true) ->
-                wireguard(s)
-            s.startsWith("hysteria2://", true) ||
-            s.startsWith("hy2://", true) ||
-            s.startsWith("hysteria://", true) ->
-                hysteria(s)
-            else ->
-                ParseResult.Error("Unknown / unsupported configuration")
+    s.startsWith("{") && s.contains("\"outbounds\"") ->
+        parseXray(s)
+
+    s.startsWith("vmess://", true) ->
+        parseVmess(s)
+
+    s.startsWith("vless://", true) ->
+        parseVless(s)
+
+    s.startsWith("trojan://", true) ->
+        parseTrojan(s)
+
+    s.startsWith("ss://", true) ->
+        parseShadowsocks(s)
+
+    s.startsWith("socks://", true) ||
+    s.startsWith("socks5://", true) ->
+        parseSocks(s)
+
+    s.startsWith("http://", true) ||
+    s.startsWith("https://", true) ->
+        parseHttp(s)
+
+    s.startsWith("wireguard://", true) ->
+        parseWireGuard(s)
+
+    s.startsWith("hysteria2://", true) ||
+    s.startsWith("hy2://", true) ||
+    s.startsWith("hysteria://", true) ->
+        parseHysteria(s)
+
+    else ->
+        ParseResult.Error("Unknown / unsupported configuration")
         }
     }
 

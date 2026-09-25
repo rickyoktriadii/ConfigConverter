@@ -11,8 +11,22 @@ object ConfigValidator {
             if (runCatching { UUID.fromString(id) }.isFailure) return "Invalid UUID"
         }
         if (c.protocol == "trojan" && c.password.isNullOrEmpty()) return "Missing Trojan password"
-        val supported = setOf("tcp", "ws", "grpc", "http", "h2")
-        if (c.network.lowercase() !in supported) return "Unsupported transport type: ${c.network}"
+        val supported = setOf(
+    "tcp", "raw", "ws", "websocket",
+    "grpc", "http", "h2", "httpupgrade",
+    "splithttp", "xhttp", "hysteria"
+)
+if (
+    c.protocol !in setOf(
+        "shadowsocks",
+        "socks",
+        "http",
+        "wireguard"
+    ) &&
+    c.network.lowercase() !in supported
+) {
+    return "Unsupported transport type: ${c.network}"
+}
         return null
     }
 }

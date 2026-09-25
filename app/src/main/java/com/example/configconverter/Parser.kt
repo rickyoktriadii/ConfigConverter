@@ -2,395 +2,171 @@ package com.example.configconverter
 
 import java.net.URI
 import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import java.util.Base64
-import java.util.UUID
+import java.nio.charset.StandardCharsets
 import kotlinx.serialization.json.*
 
 sealed class ParseResult {
-    data class Ok(val config: ConnectionConfig) : ParseResult()
-    data class Error(val message: String) : ParseResult()
+    data class Ok(val config: ConnectionConfig): ParseResult()
+    data class Error(val message: String): ParseResult()
 }
 
 object ConfigParser {
 
     fun parse(raw: String): ParseResult {
-        val s = raw
-            .trim()
-            .lines()
-            .firstOrNull { it.trim().isNotEmpty() }
-            ?.trim()
-            ?: return ParseResult.Error("Empty configuration")
+        val s = raw.trim().lines()
+            .firstOrNull { it.isNotBlank() }
+            ?.trim() ?: return ParseResult.Error("Empty configuration")
 
         return when {
-            s.startsWith("vmess://", true) -> parseVmess(s)
-            s.startsWith("vless://", true) -> parseVless(s)
-            s.startsWith("trojan://", true) -> parseTrojan(s)
-            else -> ParseResult.Error("Unknown / unsupported configuration")
+            s.startsWith("{") && s.contains("\"outbounds\"") ->
+                xray(s)
+            s.startsWith("vmess://", true) ->
+                vmess(s)
+            s.startsWith("vless://", true) ->
+                uri(s, "vless")
+            s.startsWith("trojan://", true) ->
+                uri(s, "trojan")
+            s.startsWith("ss://", true) ->
+                ss(s)
+            s.startsWith("socks://", true) ||
+            s.startsWith("socks5://", true) ->
+                socks(s)
+            s.startsWith("http://", true) ||
+            s.startsWith("https://", true) ->
+                http(s)
+            s.startsWith("wireguard://", true) ->
+                wireguard(s)
+            s.startsWith("hysteria2://", true) ||
+            s.startsWith("hy2://", true) ||
+            s.startsWith("hysteria://", true) ->
+                hysteria(s)
+            else ->
+                ParseResult.Error("Unknown / unsupported configuration")
         }
     }
 
-    private fun decodeB64(s: String): String? {
-        return try {
-            val normalized = s
-                .trim()
-                .replace("\n", "")
-                .replace("\r", "")
-
-            val padded =
-                normalized + "=".repeat(
-                    (4 - normalized.length % 4) % 4
-                )
-
-            String(
-                Base64.getDecoder().decode(padded),
-                StandardCharsets.UTF_8
-            )
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun parseVmess(s: String): ParseResult {
-        val decoded = decodeB64(
-            s.removePrefix("vmess://")
-        ) ?: return ParseResult.Error(
-            "Invalid VMess Base64"
+    private fun b64(s: String): String? = try {
+        val x = s.trim().replace("\n","").replace("\r","")
+        String(
+            Base64.getDecoder().decode(
+                x + "=".repeat((4-x.length%4)%4)
+            ),
+            StandardCharsets.UTF_8
         )
+    } catch (_: Exception) { null }
 
-        val obj = try {
-            Json.parseToJsonElement(decoded).jsonObject
-        } catch (_: Exception) {
-            return ParseResult.Error(
-                "Invalid JSON payload."
-            )
+    private fun dec(s: String): String =
+        runCatching {
+            URLDecoder.decode(s, "UTF-8")
+        }.getOrElse { s }
+
+    private fun query(u: URI): Map<String,String> =
+        u.rawQuery?.split("&")
+            ?.filter { it.isNotBlank() }
+            ?.associate {
+                val p = it.split("=", limit=2)
+                dec(p[0]) to if (p.size > 1) dec(p[1]) else ""
+            } ?: emptyMap()
+
+    private fun port(u: URI, d: Int = 443): Int =
+        if (u.port == -1) d else u.port
+        private fun vmess(s: String): ParseResult {
+        val o = b64(s.substringAfter("://"))
+            ?: return ParseResult.Error("Invalid VMess Base64")
+
+        val j = runCatching {
+            Json.parseToJsonElement(o).jsonObject
+        }.getOrElse {
+            return ParseResult.Error("Invalid VMess JSON")
         }
 
-        fun str(key: String): String =
-            obj[key]
-                ?.jsonPrimitive
-                ?.contentOrNull
-                ?: ""
+        fun v(k: String) =
+            j[k]?.jsonPrimitive?.contentOrNull ?: ""
 
-        val server = str("add")
-        val port = str("port").toIntOrNull()
-        val uuid = str("id")
+        val p = v("port").toIntOrNull()
+            ?: return ParseResult.Error("Invalid VMess port")
 
-        if (server.isBlank()) {
-            return ParseResult.Error(
-                "Server address is missing."
-            )
-        }
-
-        if (port == null || port !in 1..65535) {
-            return ParseResult.Error(
-                "Port must be between 1 and 65535."
-            )
-        }
-
-        if (runCatching {
-                UUID.fromString(uuid)
-            }.isFailure
-        ) {
-            return ParseResult.Error(
-                "Missing or invalid UUID"
-            )
-        }
-
-        val tlsValue = str("tls").lowercase()
+        if (v("add").isBlank())
+            return ParseResult.Error("VMess server missing")
 
         return ParseResult.Ok(
             ConnectionConfig(
-                protocol = "vmess",
-                name = str("ps"),
-                server = server,
-                port = port,
-                uuid = uuid,
-
-                alterId = str("aid")
-                    .toIntOrNull()
-                    ?: 0,
-
-                cipher = str("scy")
-                    .ifBlank { "auto" },
-
-                network = str("net")
-                    .ifBlank { "tcp" },
-
-                security = tlsValue
-                    .ifBlank { null },
-
-                tls = tlsValue.isNotBlank() &&
-                    tlsValue != "none",
-
-                sni = str("sni")
-                    .ifBlank { null },
-
-                host = str("host")
-                    .ifBlank { null },
-
-                path = str("path")
-                    .ifBlank { null },
-
-                serviceName = str("serviceName")
-                    .ifBlank { null },
-
-                alpn = str("alpn")
-                    .takeIf { it.isNotBlank() }
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() }
-                    ?: emptyList(),
-
-                fingerprint = str("fp")
-                    .ifBlank { null },
-
-                allowInsecure =
-                    str("allowInsecure")
-                        .equals("1") ||
-                    str("allowInsecure")
-                        .equals("true", true),
-
-                type = str("type")
-                    .ifBlank { null }
+                protocol="vmess",
+                name=v("ps"),
+                server=v("add"),
+                port=p,
+                uuid=v("id"),
+                alterId=v("aid").toIntOrNull() ?: 0,
+                cipher=v("scy").ifBlank{"auto"},
+                network=v("net").ifBlank{"tcp"},
+                security=v("tls").ifBlank{null},
+                tls=v("tls").isNotBlank() &&
+                    !v("tls").equals("none",true),
+                sni=v("sni").ifBlank{null},
+                host=v("host").ifBlank{null},
+                path=v("path").ifBlank{null},
+                serviceName=v("serviceName").ifBlank{null},
+                fingerprint=v("fp").ifBlank{null},
+                alpn=v("alpn").split(",")
+                    .map{it.trim()}
+                    .filter{it.isNotBlank()}
             )
         )
     }
 
-    private fun parseUri(
+    private fun uri(
         s: String,
-        expected: String
+        protocol: String
     ): ParseResult {
 
-        val uri = try {
-            URI(s)
-        } catch (_: Exception) {
-            return ParseResult.Error(
-                "Invalid $expected URI"
-            )
+        val u = runCatching { URI(s) }.getOrElse {
+            return ParseResult.Error("Invalid $protocol URI")
         }
 
-        val userInfo =
-            uri.rawUserInfo
-                ?: return ParseResult.Error(
-                    "Missing credentials"
-                )
+        val host = u.host
+            ?: return ParseResult.Error("Server missing")
 
-        val parts = userInfo.split(
-            ":",
-            limit = 2
-        )
+        val q = query(u)
+        val user = u.rawUserInfo
+            ?.substringBefore(":")
+            ?.let(::dec)
+            ?: return ParseResult.Error("Credentials missing")
 
-        val credential = try {
-            URLDecoder.decode(
-                parts[0],
-                "UTF-8"
-            )
-        } catch (_: Exception) {
-            parts[0]
-        }
-
-        val host = uri.host
-            ?: return ParseResult.Error(
-                "Server address is missing."
-            )
-
-        val port =
-            if (uri.port == -1) 443
-            else uri.port
-
-        if (port !in 1..65535) {
-            return ParseResult.Error(
-                "Port must be between 1 and 65535."
-            )
-        }
-
-        val query =
-            mutableMapOf<String, String>()
-
-        uri.rawQuery
-            ?.split("&")
-            ?.filter { it.isNotBlank() }
-            ?.forEach { item ->
-
-                val p = item.split(
-                    "=",
-                    limit = 2
-                )
-
-                query[decode(p[0])] =
-                    if (p.size > 1)
-                        decode(p[1])
-                    else
-                        ""
-            }
-
-        val name =
-            uri.rawFragment
-                ?.let { decode(it) }
-                ?: ""
+        val sec = q["security"]?.lowercase()
+        val net = q["type"]?.lowercase() ?: "tcp"
 
         return ParseResult.Ok(
-            if (expected == "VLESS") {
-                vlessConfig(
-                    credential,
-                    host,
-                    port,
-                    query,
-                    name
-                )
-            } else {
-                trojanConfig(
-                    credential,
-                    host,
-                    port,
-                    query,
-                    name
-                )
-            }
+            ConnectionConfig(
+                protocol=protocol,
+                name=u.rawFragment?.let(::dec) ?: "",
+                server=host,
+                port=port(u),
+                uuid=if(protocol=="vless") user else null,
+                password=if(protocol=="trojan") user else null,
+                network=net,
+                security=sec ?: if(protocol=="trojan") "tls" else null,
+                tls=protocol=="trojan" ||
+                    sec.equals("tls",true) ||
+                    sec.equals("reality",true),
+                sni=q["sni"],
+                host=q["host"],
+                path=q["path"],
+                serviceName=q["serviceName"],
+                flow=q["flow"],
+                encryption=q["encryption"] ?: "none",
+                cipher=q["encryption"] ?: "none",
+                fingerprint=q["fp"] ?: q["fingerprint"],
+                alpn=q["alpn"]?.split(",")
+                    ?.map{it.trim()}
+                    ?: emptyList(),
+                allowInsecure=q["allowInsecure"]
+                    .equals("1") ||
+                    q["allowInsecure"]
+                    .equals("true",true),
+                realityPublicKey=q["pbk"],
+                realityShortId=q["sid"],
+                realitySpiderX=q["spx"]
+            )
         )
     }
-
-    private fun decode(v: String): String =
-        runCatching {
-            URLDecoder.decode(
-                v,
-                "UTF-8"
-            )
-        }.getOrElse {
-            v
-        }
-
-    private fun vlessConfig(
-        uuid: String,
-        host: String,
-        port: Int,
-        q: Map<String, String>,
-        name: String
-    ) =
-        ConnectionConfig(
-            protocol = "vless",
-            name = name,
-            server = host,
-            port = port,
-            uuid = uuid,
-
-            network = q["type"]
-                ?.lowercase()
-                ?: "tcp",
-
-            security = q["security"]
-                ?.lowercase(),
-
-            tls =
-                q["security"]
-                    .equals("tls", true) ||
-                q["security"]
-                    .equals("reality", true),
-
-            sni = q["sni"],
-
-            host = q["host"],
-
-            path = q["path"],
-
-            serviceName =
-                q["serviceName"],
-
-            flow = q["flow"],
-
-            fingerprint =
-                q["fp"]
-                    ?: q["fingerprint"],
-
-            alpn =
-                q["alpn"]
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() }
-                    ?: emptyList(),
-
-            allowInsecure =
-                q["allowInsecure"]
-                    .equals("1") ||
-                q["allowInsecure"]
-                    .equals("true", true),
-
-            type = q["type"],
-
-            cipher =
-                q["encryption"]
-                    ?: "none",
-
-            realityPublicKey =
-                q["pbk"],
-
-            realityShortId =
-                q["sid"],
-
-            realitySpiderX =
-                q["spx"]
-        )
-
-    private fun trojanConfig(
-        password: String,
-        host: String,
-        port: Int,
-        q: Map<String, String>,
-        name: String
-    ) =
-        ConnectionConfig(
-            protocol = "trojan",
-            name = name,
-            server = host,
-            port = port,
-            password = password,
-
-            network = q["type"]
-                ?.lowercase()
-                ?: "tcp",
-
-            security = q["security"]
-                ?.lowercase()
-                ?: "tls",
-
-            tls = true,
-
-            sni = q["sni"]
-                ?: host,
-
-            host = q["host"],
-
-            path = q["path"],
-
-            serviceName =
-                q["serviceName"],
-
-            fingerprint =
-                q["fp"]
-                    ?: q["fingerprint"],
-
-            alpn =
-                q["alpn"]
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() }
-                    ?: emptyList(),
-
-            allowInsecure =
-                q["allowInsecure"]
-                    .equals("1") ||
-                q["allowInsecure"]
-                    .equals("true", true),
-
-            type = q["type"]
-        )
-
-    private fun parseVless(
-        s: String
-    ) = parseUri(s, "VLESS")
-
-    private fun parseTrojan(
-        s: String
-    ) = parseUri(s, "Trojan")
-}

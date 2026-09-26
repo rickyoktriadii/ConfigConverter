@@ -4,19 +4,19 @@ import kotlinx.serialization.json.*
 
 object V2RayGenerator {
 
-    fun generate(c: ConnectionConfig): String {
-        return when (c.protocol.lowercase()) {
-            "vmess" -> vmess(c)
-            "vless" -> vless(c)
-            "trojan" -> trojan(c)
-            "shadowsocks" -> shadowsocks(c)
-            "socks" -> socks(c)
-            "http" -> http(c)
-            "wireguard" -> wireguard(c)
-            "hysteria" -> hysteria(c)
-            else -> error("Unsupported protocol: ${c.protocol}")
-        }
-    }
+     fun generate(c: ConnectionConfig): String {
+    return when (c.protocol.lowercase()) {
+        "vmess" -> vmess(c)
+        "vless" -> vless(c)
+        "trojan" -> trojan(c)
+        "shadowsocks" -> shadowsocks(c)
+        "socks" -> socks(c)
+        "http" -> http(c)
+        "wireguard" -> wireguard(c)
+        "hysteria" -> hysteria(c)
+        else -> error("Unsupported protocol: ${c.protocol}")
+    }.toString()
+  }
 
     private fun base(
         protocol: String,

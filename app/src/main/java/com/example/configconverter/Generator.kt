@@ -5,219 +5,237 @@ import kotlinx.serialization.json.*
 object V2RayGenerator {
 
     fun generate(c: ConnectionConfig): String {
+        return when (c.protocol.lowercase()) {
+            "vmess" -> vmess(c)
+            "vless" -> vless(c)
+            "trojan" -> trojan(c)
+            "shadowsocks" -> shadowsocks(c)
+            "socks" -> socks(c)
+            "http" -> http(c)
+            "wireguard" -> wireguard(c)
+            "hysteria" -> hysteria(c)
+            else -> error("Unsupported protocol: ${c.protocol}")
+        }
+    }
 
-        val streamSettings = buildJsonObject {
+    private fun base(
+        protocol: String,
+        settings: JsonObject,
+        stream: JsonObject? = null
+    ): JsonObject {
+        return buildJsonObject {
+            put("protocol", protocol)
+            put("settings", settings)
+            if (stream != null) {
+                put("streamSettings", stream)
+            }
+        }
+    }
 
-            val method = when (c.network.lowercase()) {
-                "ws", "websocket" -> "websocket"
-                "grpc" -> "grpc"
-                "tcp", "raw" -> "raw"
-                "http" -> "http"
-                "h2" -> "http"
-                else -> c.network
+    private fun stream(c: ConnectionConfig): JsonObject {
+        return buildJsonObject {
+            put("method", c.network.ifBlank { "raw" })
+
+            if (c.tls || !c.security.isNullOrBlank()) {
+                put(
+                    "security",
+                    c.security ?: "tls"
+                )
             }
 
-            put("network", method)
-            put("security", c.security ?: if (c.tls) "tls" else "none")
+            if (!c.sni.isNullOrBlank()) {
+                putJsonObject("tlsSettings") {
+                    put("serverName", c.sni)
+                    put(
+                        "allowInsecure",
+                        c.allowInsecure
+                    )
 
-            when {
-                c.security.equals("reality", true) -> {
-                    putJsonObject("realitySettings") {
-
-                        c.sni
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("serverName", it) }
-
-                        c.fingerprint
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("fingerprint", it) }
-
-                        c.realityPublicKey
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("password", it) }
-
-                        c.realityShortId
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("shortId", it) }
-
-                        c.realitySpiderX
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("spiderX", it) }
-                    }
-                }
-
-                c.security.equals("tls", true) ||
-                c.tls -> {
-                    putJsonObject("tlsSettings") {
-
-                        c.sni
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("serverName", it) }
-
-                        if (c.alpn.isNotEmpty()) {
-                            putJsonArray("alpn") {
-                                c.alpn.forEach {
-                                    add(it)
-                                }
-                            }
-                        }
-
-                        c.fingerprint
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { put("fingerprint", it) }
-
+                    if (c.fingerprint != null) {
                         put(
-                            "allowInsecure",
-                            c.allowInsecure
+                            "fingerprint",
+                            c.fingerprint
                         )
                     }
-                }
-            }
 
-            when (method) {
-
-                "websocket" -> {
-                    putJsonObject("wsSettings") {
-
-                        put(
-                            "path",
-                            c.path ?: "/"
-                        )
-
-                        if (!c.host.isNullOrBlank()) {
-                            putJsonObject("headers") {
-                                put(
-                                    "Host",
-                                    c.host
-                                )
+                    if (c.alpn.isNotEmpty()) {
+                        putJsonArray("alpn") {
+                            c.alpn.forEach {
+                                add(it)
                             }
                         }
                     }
                 }
+            }
 
-                "grpc" -> {
-                    putJsonObject("grpcSettings") {
+            if (
+                c.network.equals("ws", true) ||
+                c.network.equals("websocket", true)
+            ) {
+                putJsonObject("wsSettings") {
+                    put(
+                        "path",
+                        c.path ?: "/"
+                    )
 
-                        put(
-                            "serviceName",
-                            c.serviceName ?: ""
-                        )
+                    if (!c.host.isNullOrBlank()) {
+                        putJsonObject("headers") {
+                            put("Host", c.host)
+                        }
                     }
+                }
+            }
+
+            if (c.network.equals("grpc", true)) {
+                putJsonObject("grpcSettings") {
+                    put(
+                        "serviceName",
+                        c.serviceName ?: ""
+                    )
+                }
+            }
+
+            if (
+                c.security.equals(
+                    "reality",
+                    true
+                )
+            ) {
+                putJsonObject("realitySettings") {
+                    put(
+                        "serverName",
+                        c.sni ?: c.server
+                    )
+
+                    put(
+                        "fingerprint",
+                        c.fingerprint ?: "chrome"
+                    )
+
+                    put(
+                        "publicKey",
+                        c.realityPublicKey ?: ""
+                    )
+
+                    put(
+                        "shortId",
+                        c.realityShortId ?: ""
+                    )
+
+                    put(
+                        "spiderX",
+                        c.realitySpiderX ?: ""
+                    )
                 }
             }
         }
+    }
+    
+    private fun vmess(c: ConnectionConfig): JsonObject {
+        return base(
+            "vmess",
+            buildJsonObject {
+                putJsonArray("vnext") {
+                    addJsonObject {
+                        put("address", c.server)
+                        put("port", c.port)
 
-        val outbound = buildJsonObject {
-
-            put(
-                "protocol",
-                c.protocol
-            )
-
-            putJsonObject("settings") {
-
-                when (c.protocol.lowercase()) {
-
-                    "vmess" -> {
-                        putJsonArray("vnext") {
+                        putJsonArray("users") {
                             addJsonObject {
+                                put("id", c.uuid ?: "")
+                                put("alterId", c.alterId)
+                                put("security", c.cipher)
+                            }
+                        }
+                    }
+                }
+            },
+            stream(c)
+        )
+    }
 
-                                put(
-                                    "address",
-                                    c.server
-                                )
+    private fun vless(c: ConnectionConfig): JsonObject {
+        return base(
+            "vless",
+            buildJsonObject {
+                putJsonArray("vnext") {
+                    addJsonObject {
+                        put("address", c.server)
+                        put("port", c.port)
 
-                                put(
-                                    "port",
-                                    c.port
-                                )
+                        putJsonArray("users") {
+                            addJsonObject {
+                                put("id", c.uuid ?: "")
+                                put("encryption", c.encryption ?: "none")
 
-                                putJsonArray("users") {
-                                    addJsonObject {
-
-                                        put(
-                                            "id",
-                                            c.uuid ?: ""
-                                        )
-
-                                        put(
-                                            "alterId",
-                                            c.alterId
-                                        )
-
-                                        put(
-                                            "security",
-                                            c.cipher.ifBlank {
-                                                "auto"
-                                            }
-                                        )
-                                    }
+                                if (!c.flow.isNullOrBlank()) {
+                                    put("flow", c.flow)
                                 }
                             }
                         }
                     }
+                }
+            },
+            stream(c)
+        )
+    }
 
-                    "vless" -> {
-                        putJsonArray("vnext") {
-                            addJsonObject {
+    private fun trojan(c: ConnectionConfig): JsonObject {
+        return base(
+            "trojan",
+            buildJsonObject {
+                putJsonArray("servers") {
+                    addJsonObject {
+                        put("address", c.server)
+                        put("port", c.port)
+                        put("password", c.password ?: "")
 
-                                put(
-                                    "address",
-                                    c.server
-                                )
-
-                                put(
-                                    "port",
-                                    c.port
-                                )
-
-                                putJsonArray("users") {
-                                    addJsonObject {
-
-                                        put(
-                                            "id",
-                                            c.uuid ?: ""
-                                        )
-
-                                        put(
-                                            "encryption",
-                                            c.cipher.ifBlank {
-                                                "none"
-                                            }
-                                        )
-
-                                        c.flow
-                                            ?.takeIf {
-                                                it.isNotBlank()
-                                            }
-                                            ?.let {
-                                                put(
-                                                    "flow",
-                                                    it
-                                                )
-                                            }
-                                    }
-                                }
-                            }
+                        if (c.flow != null) {
+                            put("flow", c.flow)
                         }
                     }
+                }
+            },
+            stream(c)
+        )
+    }
+    
+        private fun shadowsocks(c: ConnectionConfig): JsonObject {
+        return base(
+            "shadowsocks",
+            buildJsonObject {
+                putJsonArray("servers") {
+                    addJsonObject {
+                        put("address", c.server)
+                        put("port", c.port)
+                        put("method", c.method ?: c.cipher)
+                        put("password", c.password ?: "")
+                    }
+                }
+            }
+        )
+    }
 
-                    "trojan" -> {
-                        putJsonArray("servers") {
-                            addJsonObject {
+    private fun socks(c: ConnectionConfig): JsonObject {
+        return base(
+            "socks",
+            buildJsonObject {
+                putJsonArray("servers") {
+                    addJsonObject {
+                        put("address", c.server)
+                        put("port", c.port)
 
+                        if (
+                            !c.username.isNullOrBlank() ||
+                            !c.password.isNullOrBlank()
+                        ) {
+                            putJsonObject("users") {
                                 put(
-                                    "address",
-                                    c.server
+                                    "user",
+                                    c.username ?: ""
                                 )
-
                                 put(
-                                    "port",
-                                    c.port
-                                )
-
-                                put(
-                                    "password",
+                                    "pass",
                                     c.password ?: ""
                                 )
                             }
@@ -225,254 +243,117 @@ object V2RayGenerator {
                     }
                 }
             }
+        )
+    }
 
-            put(
-                "streamSettings",
-                streamSettings
-            )
-
-            if (c.udp) {
-                putJsonObject("mux") {
-                    put(
-                        "enabled",
-                        false
-                    )
-                }
-            }
-        }
-
-        return Json {
-            prettyPrint = true
-            prettyPrintIndent = "  "
-        }.encodeToString(
-            JsonObject.serializer(),
+    private fun http(c: ConnectionConfig): JsonObject {
+        return base(
+            "http",
             buildJsonObject {
-                putJsonArray("outbounds") {
-                    add(outbound)
+                putJsonArray("servers") {
+                    addJsonObject {
+                        put("address", c.server)
+                        put("port", c.port)
+
+                        if (!c.username.isNullOrBlank()) {
+                            putJsonArray("users") {
+                                addJsonObject {
+                                    put(
+                                        "user",
+                                        c.username
+                                    )
+                                    put(
+                                        "pass",
+                                        c.password ?: ""
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         )
     }
-}
 
-object OpenClashGenerator {
+        private fun wireguard(c: ConnectionConfig): JsonObject {
+        return base(
+            "wireguard",
+            buildJsonObject {
+                put("secretKey", c.privateKey ?: "")
 
-    fun generate(c: ConnectionConfig): String {
+                if (c.mtu != null) {
+                    put("mtu", c.mtu)
+                }
 
-        val sb = StringBuilder()
-
-        sb.append("proxies:\n")
-
-        sb.append("  - name: ")
-            .append(
-                yaml(
-                    c.name.ifBlank {
-                        c.protocol.uppercase()
+                putJsonArray("address") {
+                    c.localAddress.forEach {
+                        add(it)
                     }
-                )
-            )
-            .append('\n')
+                }
 
-        sb.append("    type: ")
-            .append(c.protocol.lowercase())
-            .append('\n')
+                putJsonArray("peers") {
+                    addJsonObject {
+                        put(
+                            "publicKey",
+                            c.peerPublicKey ?: c.publicKey ?: ""
+                        )
+                        put("endpoint", "${c.server}:${c.port}")
 
-        sb.append("    server: ")
-            .append(yaml(c.server))
-            .append('\n')
-
-        sb.append("    port: ")
-            .append(c.port)
-            .append('\n')
-
-        when (c.protocol.lowercase()) {
-
-            "vmess",
-            "vless" -> {
-
-                sb.append("    uuid: ")
-                    .append(yaml(c.uuid ?: ""))
-                    .append('\n')
-
-                if (c.protocol.equals("vmess", true)) {
-                    sb.append("    alterId: ")
-                        .append(c.alterId)
-                        .append('\n')
-
-                    sb.append("    cipher: ")
-                        .append(
-                            yaml(
-                                c.cipher.ifBlank {
-                                    "auto"
+                        putJsonArray("allowedIPs") {
+                            if (c.allowedIPs.isEmpty()) {
+                                add("0.0.0.0/0")
+                                add("::/0")
+                            } else {
+                                c.allowedIPs.forEach {
+                                    add(it)
                                 }
-                            )
-                        )
-                        .append('\n')
-                } else {
-                    sb.append("    cipher: none\n")
-                }
-
-                c.flow
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let {
-                        sb.append("    flow: ")
-                            .append(yaml(it))
-                            .append('\n')
+                            }
+                        }
                     }
-            }
-
-            "trojan" -> {
-                sb.append("    password: ")
-                    .append(yaml(c.password ?: ""))
-                    .append('\n')
-            }
-        }
-
-        if (
-            c.tls ||
-            c.security.equals("tls", true) ||
-            c.security.equals("reality", true)
-        ) {
-            sb.append("    tls: true\n")
-        }
-
-        c.sni
-            ?.takeIf { it.isNotBlank() }
-            ?.let {
-                sb.append("    servername: ")
-                    .append(yaml(it))
-                    .append('\n')
-            }
-
-        c.fingerprint
-            ?.takeIf { it.isNotBlank() }
-            ?.let {
-                sb.append("    client-fingerprint: ")
-                    .append(yaml(it))
-                    .append('\n')
-            }
-
-        if (c.alpn.isNotEmpty()) {
-
-            sb.append("    alpn:\n")
-
-            c.alpn.forEach {
-                sb.append("      - ")
-                    .append(yaml(it))
-                    .append('\n')
-            }
-        }
-
-        sb.append("    network: ")
-            .append(
-                when (c.network.lowercase()) {
-                    "websocket" -> "ws"
-                    else -> c.network.lowercase()
                 }
-            )
-            .append('\n')
-
-        when (c.network.lowercase()) {
-
-            "ws",
-            "websocket" -> {
-
-                sb.append("    ws-opts:\n")
-
-                sb.append("      path: ")
-                    .append(yaml(c.path ?: "/"))
-                    .append('\n')
-
-                c.host
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let {
-                        sb.append(
-                            "      headers:\n"
-                        )
-
-                        sb.append(
-                            "        Host: "
-                        )
-                            .append(yaml(it))
-                            .append('\n')
-                    }
             }
-
-            "grpc" -> {
-
-                sb.append("    grpc-opts:\n")
-
-                sb.append(
-                    "      grpc-service-name: "
-                )
-                    .append(
-                        yaml(
-                            c.serviceName ?: ""
-                        )
-                    )
-                    .append('\n')
-            }
-        }
-
-        if (
-            c.security.equals(
-                "reality",
-                true
-            )
-        ) {
-
-            sb.append("    reality-opts:\n")
-
-            c.realityPublicKey
-                ?.takeIf { it.isNotBlank() }
-                ?.let {
-                    sb.append(
-                        "      public-key: "
-                    )
-                        .append(yaml(it))
-                        .append('\n')
-                }
-
-            c.realityShortId
-                ?.takeIf { it.isNotBlank() }
-                ?.let {
-                    sb.append(
-                        "      short-id: "
-                    )
-                        .append(yaml(it))
-                        .append('\n')
-                }
-        }
-
-        if (c.allowInsecure) {
-            sb.append(
-                "    skip-cert-verify: true\n"
-            )
-        }
-
-        if (c.udp) {
-            sb.append(
-                "    udp: true\n"
-            )
-        }
-
-        return sb.toString()
+        )
     }
 
-    private fun yaml(s: String): String {
-        return "\"" +
-            s.replace(
-                "\\",
-                "\\\\"
-            )
-                .replace(
-                    "\"",
-                    "\\\""
+    private fun hysteria(c: ConnectionConfig): JsonObject {
+        return base(
+            "hysteria",
+            buildJsonObject {
+                put("version", c.hysteriaVersion)
+                put("server", "${c.server}:${c.port}")
+
+                if (!c.password.isNullOrBlank()) {
+                    put("auth", c.password)
+                }
+
+                if (!c.sni.isNullOrBlank()) {
+                    put("serverName", c.sni)
+                }
+
+                put(
+                    "insecure",
+                    c.allowInsecure
                 )
-                .replace(
-                    "\n",
-                    "\\n"
-                ) +
-            "\""
+
+                if (c.upMbps != null) {
+                    put("upMbps", c.upMbps)
+                }
+
+                if (c.downMbps != null) {
+                    put("downMbps", c.downMbps)
+                }
+
+                if (!c.obfs.isNullOrBlank()) {
+                    put("obfs", c.obfs)
+
+                    if (!c.obfsPassword.isNullOrBlank()) {
+                        put(
+                            "obfsPassword",
+                            c.obfsPassword
+                        )
+                    }
+                }
+            }
+        )
     }
 }

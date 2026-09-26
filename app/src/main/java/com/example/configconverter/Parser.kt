@@ -19,39 +19,40 @@ object ConfigParser {
             ?.trim() ?: return ParseResult.Error("Empty configuration")
 
         return when {
+
     s.startsWith("{") && s.contains("\"outbounds\"") ->
-        parseXray(s)
+        xray(s)
 
     s.startsWith("vmess://", true) ->
-        parseVmess(s)
+        vmess(s)
 
     s.startsWith("vless://", true) ->
-        parseVless(s)
+        uri(s, "vless")
 
     s.startsWith("trojan://", true) ->
-        parseTrojan(s)
+        uri(s, "trojan")
 
     s.startsWith("ss://", true) ->
-        parseShadowsocks(s)
+        ss(s)
 
     s.startsWith("socks://", true) ||
     s.startsWith("socks5://", true) ->
-        parseSocks(s)
+        socks(s)
 
     s.startsWith("http://", true) ||
     s.startsWith("https://", true) ->
-        parseHttp(s)
+        http(s)
 
     s.startsWith("wireguard://", true) ->
-        parseWireGuard(s)
+        wireguard(s)
 
     s.startsWith("hysteria2://", true) ||
     s.startsWith("hy2://", true) ||
     s.startsWith("hysteria://", true) ->
-        parseHysteria(s)
+        hysteria(s)
 
     else ->
-        ParseResult.Error("Unknown / unsupported configuration")
+        ParseResult.Error("Unknown / unsupported configuration")         
         }
     }
 

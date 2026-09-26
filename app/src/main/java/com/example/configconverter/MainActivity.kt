@@ -81,7 +81,8 @@ private fun ConfigConverterApp(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor =
+            MaterialTheme.colorScheme.background,
 
         bottomBar = {
             NavigationBar(
@@ -112,6 +113,22 @@ private fun ConfigConverterApp(
                     },
                     icon = {
                         Icon(
+                            Icons.Default.NetworkCheck,
+                            contentDescription = null
+                        )
+                    },
+                    label = {
+                        Text("Status")
+                    }
+                )
+
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = {
+                        selectedTab = 2
+                    },
+                    icon = {
+                        Icon(
                             Icons.Default.History,
                             contentDescription = null
                         )
@@ -122,9 +139,9 @@ private fun ConfigConverterApp(
                 )
 
                 NavigationBarItem(
-                    selected = selectedTab == 2,
+                    selected = selectedTab == 3,
                     onClick = {
-                        selectedTab = 2
+                        selectedTab = 3
                     },
                     icon = {
                         Icon(
@@ -144,20 +161,29 @@ private fun ConfigConverterApp(
 
             0 -> ConvertScreen(
                 vm = vm,
-                modifier = Modifier.padding(padding)
+                modifier =
+                    Modifier.padding(padding)
             )
 
-            1 -> HistoryScreen(
+            1 -> StatusScreen(
+                modifier =
+                    Modifier.padding(padding)
+            )
+
+            2 -> HistoryScreen(
                 vm = vm,
-                modifier = Modifier.padding(padding)
+                modifier =
+                    Modifier.padding(padding)
             )
 
-            2 -> SettingsScreen(
-                modifier = Modifier.padding(padding)
+            3 -> SettingsScreen(
+                modifier =
+                    Modifier.padding(padding)
             )
         }
     }
 }
+
 
 @Composable
 private fun ConvertScreen(
@@ -246,13 +272,15 @@ private fun ConvertScreen(
     ) {
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth(),
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
 
             Column(
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             ) {
 
                 Text(
@@ -287,7 +315,8 @@ private fun ConvertScreen(
         }
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth(),
             shape =
                 RoundedCornerShape(20.dp),
             colors =
@@ -372,7 +401,6 @@ private fun ConvertScreen(
                             .horizontalScroll(
                                 rememberScrollState()
                             ),
-
                     horizontalArrangement =
                         Arrangement.spacedBy(8.dp)
                 ) {
@@ -561,6 +589,641 @@ private fun ConvertScreen(
     }
 }
 
+
+@Composable
+private fun StatusScreen(
+    modifier: Modifier = Modifier
+) {
+    var configuration by remember {
+        mutableStateOf("")
+    }
+
+    var checked by remember {
+        mutableStateOf(false)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(
+                rememberScrollState()
+            )
+            .padding(
+                horizontal = 16.dp,
+                vertical = 14.dp
+            ),
+
+        verticalArrangement =
+            Arrangement.spacedBy(12.dp)
+    ) {
+
+        Text(
+            text = "Status Checker",
+
+            style =
+                MaterialTheme.typography
+                    .headlineSmall,
+
+            fontWeight =
+                FontWeight.Bold
+        )
+
+        Text(
+            text =
+                "Check your configuration status",
+
+            style =
+                MaterialTheme.typography.bodySmall,
+
+            color =
+                MaterialTheme.colorScheme
+                    .onSurfaceVariant
+        )
+
+        Row(
+            modifier =
+                Modifier.fillMaxWidth(),
+
+            horizontalArrangement =
+                Arrangement.spacedBy(10.dp)
+        ) {
+
+            StatusSummaryCard(
+                modifier =
+                    Modifier.weight(1f),
+
+                title = "Active",
+
+                value = if (checked) {
+                    "0"
+                } else {
+                    "—"
+                },
+
+                icon =
+                    Icons.Default.CheckCircle
+            )
+
+            StatusSummaryCard(
+                modifier =
+                    Modifier.weight(1f),
+
+                title = "Offline",
+
+                value = if (checked) {
+                    "0"
+                } else {
+                    "—"
+                },
+
+                icon =
+                    Icons.Default.ErrorOutline
+            )
+
+            StatusSummaryCard(
+                modifier =
+                    Modifier.weight(1f),
+
+                title = "Unknown",
+
+                value = if (checked) {
+                    "1"
+                } else {
+                    "—"
+                },
+
+                icon =
+                    Icons.Default.HelpOutline
+            )
+        }
+
+        Card(
+            modifier =
+                Modifier.fillMaxWidth(),
+
+            shape =
+                RoundedCornerShape(20.dp),
+
+            colors =
+                CardDefaults.cardColors(
+                    containerColor =
+                        MaterialTheme.colorScheme.surface
+                )
+        ) {
+
+            Column(
+                modifier =
+                    Modifier.padding(14.dp),
+
+                verticalArrangement =
+                    Arrangement.spacedBy(10.dp)
+            ) {
+
+                Text(
+                    text = "Configuration",
+
+                    fontWeight =
+                        FontWeight.SemiBold
+                )
+
+                OutlinedTextField(
+                    value = configuration,
+
+                    onValueChange = {
+                        configuration = it
+                        checked = false
+                    },
+
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(
+                                min = 150.dp
+                            ),
+
+                    placeholder = {
+                        Text(
+                            "Paste configuration here..."
+                        )
+                    },
+
+                    shape =
+                        RoundedCornerShape(14.dp),
+
+                    maxLines = 8
+                )
+
+                Button(
+                    onClick = {
+                        checked = true
+                    },
+
+                    enabled =
+                        configuration.isNotBlank(),
+
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+
+                    shape =
+                        RoundedCornerShape(16.dp)
+                ) {
+
+                    Icon(
+                        Icons.Default.NetworkCheck,
+                        contentDescription = null
+                    )
+
+                    Spacer(
+                        Modifier.width(8.dp)
+                    )
+
+                    Text(
+                        text = "CHECK STATUS",
+
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        if (!checked) {
+
+            StatusEmptyCard()
+
+        } else {
+
+            StatusResultCard(
+                configuration =
+                    configuration
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun StatusSummaryCard(
+    modifier: Modifier,
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Card(
+        modifier = modifier,
+
+        shape =
+            RoundedCornerShape(16.dp),
+
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme.colorScheme.surface
+            )
+    ) {
+
+        Column(
+            modifier =
+                Modifier.padding(10.dp),
+
+            verticalArrangement =
+                Arrangement.spacedBy(4.dp)
+        ) {
+
+            Icon(
+                imageVector = icon,
+
+                contentDescription = null,
+
+                modifier =
+                    Modifier.size(20.dp),
+
+                tint =
+                    MaterialTheme.colorScheme.primary
+            )
+
+            Text(
+                text = value,
+
+                style =
+                    MaterialTheme.typography
+                        .titleLarge,
+
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            Text(
+                text = title,
+
+                style =
+                    MaterialTheme.typography
+                        .labelSmall,
+
+                color =
+                    MaterialTheme.colorScheme
+                        .onSurfaceVariant
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun StatusEmptyCard() {
+    Card(
+        modifier =
+            Modifier.fillMaxWidth(),
+
+        shape =
+            RoundedCornerShape(20.dp)
+    ) {
+
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+
+            horizontalAlignment =
+                Alignment.CenterHorizontally,
+
+            verticalArrangement =
+                Arrangement.spacedBy(8.dp)
+        ) {
+
+            Icon(
+                Icons.Default.NetworkCheck,
+
+                contentDescription = null,
+
+                modifier =
+                    Modifier.size(42.dp),
+
+                tint =
+                    MaterialTheme.colorScheme
+                        .onSurfaceVariant
+            )
+
+            Text(
+                text =
+                    "No status check yet",
+
+                fontWeight =
+                    FontWeight.SemiBold
+            )
+
+            Text(
+                text =
+                    "Paste a configuration above and check its status.",
+
+                style =
+                    MaterialTheme.typography
+                        .bodySmall,
+
+                color =
+                    MaterialTheme.colorScheme
+                        .onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusResultCard(
+    configuration: String
+) {
+    Card(
+        modifier =
+            Modifier.fillMaxWidth(),
+
+        shape =
+            RoundedCornerShape(20.dp),
+
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme.colorScheme.surface
+            )
+    ) {
+
+        Column(
+            modifier =
+                Modifier.padding(14.dp),
+
+            verticalArrangement =
+                Arrangement.spacedBy(12.dp)
+        ) {
+
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                Column(
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
+
+                    Text(
+                        text = "Configuration Status",
+
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        style =
+                            MaterialTheme.typography
+                                .titleMedium
+                    )
+
+                    Text(
+                        text =
+                            "Preliminary status result",
+
+                        style =
+                            MaterialTheme.typography
+                                .bodySmall,
+
+                        color =
+                            MaterialTheme.colorScheme
+                                .onSurfaceVariant
+                    )
+                }
+
+                Surface(
+                    shape =
+                        RoundedCornerShape(50.dp),
+
+                    color =
+                        ComposeColor(0xFF183B2A)
+                ) {
+
+                    Row(
+                        modifier =
+                            Modifier.padding(
+                                horizontal = 10.dp,
+                                vertical = 6.dp
+                            ),
+
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ) {
+
+                        Icon(
+                            Icons.Default.HelpOutline,
+
+                            contentDescription =
+                                null,
+
+                            modifier =
+                                Modifier.size(16.dp),
+
+                            tint =
+                                ComposeColor(0xFF7BE495)
+                        )
+
+                        Spacer(
+                            Modifier.width(5.dp)
+                        )
+
+                        Text(
+                            text = "UNKNOWN",
+
+                            style =
+                                MaterialTheme.typography
+                                    .labelMedium,
+
+                            fontWeight =
+                                FontWeight.Bold,
+
+                            color =
+                                ComposeColor(0xFF7BE495)
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
+            StatusInfoRow(
+                label = "Configuration",
+                value =
+                    if (
+                        configuration.length > 35
+                    ) {
+                        configuration.take(35) + "..."
+                    } else {
+                        configuration
+                    }
+            )
+
+            StatusInfoRow(
+                label = "Protocol",
+                value =
+                    detectStatusProtocol(
+                        configuration
+                    )
+            )
+
+            StatusInfoRow(
+                label = "Server",
+                value =
+                    "Not checked yet"
+            )
+
+            StatusInfoRow(
+                label = "Port",
+                value =
+                    "Not checked yet"
+            )
+
+            StatusInfoRow(
+                label = "TLS",
+                value =
+                    "Not checked yet"
+            )
+
+            StatusInfoRow(
+                label = "Latency",
+                value =
+                    "—"
+            )
+
+            HorizontalDivider()
+
+            Text(
+                text =
+                    "The configuration has not been tested against the server yet.",
+
+                style =
+                    MaterialTheme.typography.bodySmall,
+
+                color =
+                    MaterialTheme.colorScheme
+                        .onSurfaceVariant
+            )
+
+            OutlinedButton(
+                onClick = {},
+
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                shape =
+                    RoundedCornerShape(14.dp)
+            ) {
+
+                Icon(
+                    Icons.Default.Refresh,
+
+                    contentDescription =
+                        null
+                )
+
+                Spacer(
+                    Modifier.width(8.dp)
+                )
+
+                Text(
+                    "CHECK AGAIN"
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun StatusInfoRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth(),
+
+        verticalAlignment =
+            Alignment.CenterVertically
+    ) {
+
+        Text(
+            text = label,
+
+            modifier =
+                Modifier.weight(1f),
+
+            style =
+                MaterialTheme.typography
+                    .bodySmall,
+
+            color =
+                MaterialTheme.colorScheme
+                    .onSurfaceVariant
+        )
+
+        Text(
+            text = value,
+
+            style =
+                MaterialTheme.typography
+                    .bodySmall,
+
+            fontWeight =
+                FontWeight.SemiBold
+        )
+    }
+}
+
+
+private fun detectStatusProtocol(
+    configuration: String
+): String {
+
+    val value =
+        configuration
+            .trim()
+            .lowercase()
+
+    return when {
+
+        value.startsWith("vmess://") ->
+            "VMess"
+
+        value.startsWith("vless://") ->
+            "VLESS"
+
+        value.startsWith("trojan://") ->
+            "Trojan"
+
+        value.startsWith("ss://") ->
+            "Shadowsocks"
+
+        value.startsWith("socks://") ||
+        value.startsWith("socks5://") ->
+            "SOCKS"
+
+        value.startsWith("http://") ||
+        value.startsWith("https://") ->
+            "HTTP"
+
+        value.startsWith("wireguard://") ->
+            "WireGuard"
+
+        value.startsWith("hysteria://") ||
+        value.startsWith("hysteria2://") ||
+        value.startsWith("hy2://") ->
+            "Hysteria"
+
+        else ->
+            "Unknown"
+    }
+}
+
 @Composable
 private fun ResultCard(
     result: ConversionResult,
@@ -573,127 +1236,91 @@ private fun ResultCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement =
-                Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment =
-                    Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-
                     Text(
-                        text =
-                            result.config.name.ifBlank {
-                                "Converted Configuration"
-                            },
-                        fontWeight =
-                            FontWeight.Bold
+                        text = result.config.name.ifBlank {
+                            "Converted Configuration"
+                        },
+                        fontWeight = FontWeight.Bold
                     )
 
                     Text(
                         text =
                             "${result.config.protocol.uppercase()} • " +
                                 "${result.config.server}:${result.config.port}",
-                        style =
-                            MaterialTheme.typography.bodySmall,
-                        color =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Icon(
-                    Icons.Default.CheckCircle,
+                    imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint =
-                        MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
-
-            Text(
-                text = "OPENCLASH YAML",
-                style =
-                    MaterialTheme.typography.labelLarge,
-                fontWeight =
-                    FontWeight.Bold,
-                color =
-                    MaterialTheme.colorScheme.primary
-            )
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                color =
-                    MaterialTheme.colorScheme.background
+                color = MaterialTheme.colorScheme.background
             ) {
-
                 Text(
-                    text =
-                        result.openClashYaml,
-
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 300.dp)
-                            .verticalScroll(
-                                rememberScrollState()
-                            )
-                            .padding(12.dp),
-
-                    style =
-                        MaterialTheme.typography.bodySmall
+                    text = result.openClashYaml,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(
+                            rememberScrollState()
+                        )
+                        .padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
 
             Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(
-                            rememberScrollState()
-                        ),
-
-                horizontalArrangement =
-                    Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(
+                        rememberScrollState()
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
                 SmallAction(
-                    icon =
-                        Icons.Default.ContentCopy,
+                    icon = Icons.Default.ContentCopy,
                     text = "Copy",
                     onClick = onCopy
                 )
 
                 SmallAction(
-                    icon =
-                        Icons.Default.Share,
+                    icon = Icons.Default.Share,
                     text = "Share",
                     onClick = onShare
                 )
 
                 SmallAction(
-                    icon =
-                        Icons.Default.FileDownload,
+                    icon = Icons.Default.FileDownload,
                     text = "Export",
                     onClick = onExport
                 )
 
                 SmallAction(
-                    icon =
-                        Icons.Default.QrCode2,
+                    icon = Icons.Default.QrCode2,
                     text = "QR",
                     onClick = onQr
                 )
@@ -723,13 +1350,12 @@ private fun SmallAction(
         )
 
         Spacer(
-            Modifier.width(6.dp)
+            modifier = Modifier.width(6.dp)
         )
 
         Text(text)
     }
 }
-
 
 @Composable
 private fun QRDialog(
@@ -741,7 +1367,7 @@ private fun QRDialog(
 
         title = {
             Text(
-                "OpenClash Configuration QR",
+                text = "Configuration QR",
                 fontWeight = FontWeight.Bold
             )
         },
@@ -749,36 +1375,29 @@ private fun QRDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment =
-                    Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-
-                    contentDescription =
-                        "OpenClash Configuration QR Code",
-
-                    modifier =
-                        Modifier
-                            .size(260.dp)
-                            .background(
-                                ComposeColor.White,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(10.dp)
+                    contentDescription = "Configuration QR Code",
+                    modifier = Modifier
+                        .size(260.dp)
+                        .background(
+                            ComposeColor.White,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(10.dp)
                 )
 
                 Spacer(
-                    Modifier.height(10.dp)
+                    modifier = Modifier.height(10.dp)
                 )
 
                 Text(
                     text =
                         "Scan this QR code with a compatible client.",
-
-                    style =
-                        MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         },
@@ -810,11 +1429,9 @@ private fun HistoryScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "History",
-                style =
-                    MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
@@ -831,7 +1448,7 @@ private fun HistoryScreen(
         }
 
         Spacer(
-            Modifier.height(10.dp)
+            modifier = Modifier.height(10.dp)
         )
 
         if (history.isEmpty()) {
@@ -840,30 +1457,23 @@ private fun HistoryScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-
                 Column(
-                    horizontalAlignment =
-                        Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
                     Icon(
-                        Icons.Default.History,
+                        imageVector = Icons.Default.History,
                         contentDescription = null,
                         modifier = Modifier.size(42.dp),
-                        tint =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(
-                        Modifier.height(8.dp)
+                        modifier = Modifier.height(8.dp)
                     )
 
                     Text(
                         text = "No conversion history",
-                        color =
-                            MaterialTheme.colorScheme
-                                .onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -876,38 +1486,30 @@ private fun HistoryScreen(
                     .verticalScroll(
                         rememberScrollState()
                     ),
-                verticalArrangement =
-                    Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
                 history.forEach { item ->
 
                     Card(
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        shape =
-                            RoundedCornerShape(16.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
 
                         Row(
-                            modifier =
-                                Modifier.padding(12.dp),
-                            verticalAlignment =
-                                Alignment.CenterVertically
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
 
                             Column(
-                                modifier =
-                                    Modifier.weight(1f)
+                                modifier = Modifier.weight(1f)
                             ) {
 
                                 Text(
-                                    text =
-                                        item.name.ifBlank {
-                                            "Unnamed configuration"
-                                        },
-                                    fontWeight =
-                                        FontWeight.SemiBold
+                                    text = item.name.ifBlank {
+                                        "Unnamed configuration"
+                                    },
+                                    fontWeight = FontWeight.SemiBold
                                 )
 
                                 Text(
@@ -915,8 +1517,7 @@ private fun HistoryScreen(
                                         "${item.protocol.uppercase()} • " +
                                             "${item.server}:${item.port}",
                                     style =
-                                        MaterialTheme.typography
-                                            .bodySmall,
+                                        MaterialTheme.typography.bodySmall,
                                     color =
                                         MaterialTheme.colorScheme
                                             .onSurfaceVariant
@@ -928,11 +1529,10 @@ private fun HistoryScreen(
                                     vm.removeHistory(item.id)
                                 }
                             ) {
-
                                 Icon(
-                                    Icons.Default.DeleteOutline,
-                                    contentDescription =
-                                        "Delete"
+                                    imageVector =
+                                        Icons.Default.DeleteOutline,
+                                    contentDescription = "Delete"
                                 )
                             }
                         }
@@ -954,14 +1554,12 @@ private fun SettingsScreen(
                 rememberScrollState()
             )
             .padding(16.dp),
-        verticalArrangement =
-            Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
 
         Text(
             text = "Settings",
-            style =
-                MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
@@ -972,8 +1570,7 @@ private fun SettingsScreen(
 
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement =
-                    Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
 
                 Text(
@@ -983,40 +1580,29 @@ private fun SettingsScreen(
 
                 Text(
                     text =
-                        "Native Android OpenClash configuration converter.",
-                    style =
-                        MaterialTheme.typography.bodySmall,
+                        "Native Android configuration converter.",
+                    style = MaterialTheme.typography.bodySmall,
                     color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
                     text =
-                        "Supported: VMess, VLESS, Trojan, Shadowsocks, SOCKS, HTTP, WireGuard, Hysteria",
-                    style =
-                        MaterialTheme.typography.bodySmall
-                )
-
-                Text(
-                    text = "Output: OpenClash YAML",
-                    style =
-                        MaterialTheme.typography.bodySmall
+                        "Supported: VMess, VLESS, Trojan, " +
+                            "Shadowsocks, SOCKS, HTTP, WireGuard, Hysteria",
+                    style = MaterialTheme.typography.bodySmall
                 )
 
                 Text(
                     text = "Version 1.0.0",
-                    style =
-                        MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color =
-                        MaterialTheme.colorScheme
-                            .onSurfaceVariant
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
     }
 }
-
 
 private fun copyToClipboard(
     context: Context,
@@ -1029,12 +1615,11 @@ private fun copyToClipboard(
 
     clipboard.setPrimaryClip(
         ClipData.newPlainText(
-            "OpenClash Configuration",
+            "Configuration",
             value
         )
     )
 }
-
 
 private fun generateQr(
     value: String
@@ -1067,7 +1652,6 @@ private fun generateQr(
                 bitmap.setPixel(
                     x,
                     y,
-
                     if (matrix[x, y]) {
                         Color.BLACK
                     } else {

@@ -357,3 +357,45 @@ object V2RayGenerator {
         )
     }
 }
+
+object OpenClashGenerator {
+
+    fun generate(c: ConnectionConfig): String {
+        val name = c.name.ifBlank {
+            "${c.protocol}-${c.server}"
+        }
+
+        return buildString {
+            appendLine("proxies:")
+            appendLine("  - name: \"$name\"")
+            appendLine("    type: ${c.protocol.lowercase()}")
+            appendLine("    server: ${c.server}")
+            appendLine("    port: ${c.port}")
+
+            if (!c.uuid.isNullOrBlank()) {
+                appendLine("    uuid: ${c.uuid}")
+            }
+
+            if (!c.password.isNullOrBlank()) {
+                appendLine("    password: ${c.password}")
+            }
+
+            if (!c.username.isNullOrBlank()) {
+                appendLine("    username: ${c.username}")
+            }
+
+            if (c.tls) {
+                appendLine("    tls: true")
+            }
+
+            if (!c.sni.isNullOrBlank()) {
+                appendLine("    servername: ${c.sni}")
+            }
+
+            if (!c.path.isNullOrBlank()) {
+                appendLine("    ws-opts:")
+                appendLine("      path: ${c.path}")
+            }
+        }
+    }
+}

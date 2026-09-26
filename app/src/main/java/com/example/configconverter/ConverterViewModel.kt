@@ -44,7 +44,6 @@ class ConverterViewModel(app: Application) : AndroidViewModel(app) {
     s.startsWith("{") && s.contains("\"outbounds\"") -> "Xray"
     else -> null
         }
-        }
 
         _state.value = _state.value.copy(
             detected = d,
